@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>衡准 · Verity</title>
+  <meta name="description" content="衡准 · Verity 是项目材料 AI 质检与评审工具静态原型。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <script>
+    const savedTheme = localStorage.getItem("verity-theme");
+    if (savedTheme) {
+      document.documentElement.dataset.theme = savedTheme;
+    }
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="衡准 Verity 首页">衡准 · <span>Verity</span></a>
+    <div class="header-actions">
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换深色模式">☀</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">项目材料 AI 质检与评审工具</p>
+        <h1 id="hero-title">衡准 · Verity</h1>
+        <p class="hero-subtitle">让好项目，经得起评审。</p>
+        <p class="hero-description">
+          通过 AI 模拟竞赛评审标准，检查项目竞争力、材料可信度和潜在风险。
+        </p>
+        <a class="primary-action" href="#project-input">开始项目质检</a>
+      </div>
+      <div class="hero-panel report-preview" id="heroPreviewContent" aria-label="AI评审报告预览卡"></div>
+    </section>
+
+    <section class="process-strip" aria-label="评审流程">
+      <div>
+        <span>01</span>
+        <strong>提交材料</strong>
+      </div>
+      <i aria-hidden="true">↓</i>
+      <div>
+        <span>02</span>
+        <strong>AI评审</strong>
+      </div>
+      <i aria-hidden="true">↓</i>
+      <div>
+        <span>03</span>
+        <strong>获取修改方案</strong>
+      </div>
+    </section>
+
+    <section class="section-card input-section" id="project-input" aria-labelledby="input-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">STEP 01</p>
+          <h2 id="input-title">提交项目材料</h2>
+          <p class="section-description">粘贴项目简介，AI将模拟评委进行检查。</p>
+        </div>
+        <div class="input-tips" aria-label="项目简介填写建议">
+          <span>建议输入：</span>
+          <ul>
+            <li>✓ 项目背景</li>
+            <li>✓ 核心方案</li>
+            <li>✓ 创新点</li>
+            <li>✓ 已有成果</li>
+          </ul>
+        </div>
+      </div>
+
+      <form class="project-form" id="projectForm">
+        <div class="field-group">
+          <span class="field-label">项目类型</span>
+          <div class="type-options" role="radiogroup" aria-label="项目类型">
+            <label>
+              <input type="radio" name="projectType" value="挑战杯" checked>
+              <span>挑战杯</span>
+            </label>
+            <label>
+              <input type="radio" name="projectType" value="互联网+">
+              <span>互联网+</span>
+            </label>
+            <label>
+              <input type="radio" name="projectType" value="大创">
+              <span>大创</span>
+            </label>
+            <label>
+              <input type="radio" name="projectType" value="科研申请">
+              <span>科研申请</span>
+            </label>
+            <label>
+              <input type="radio" name="projectType" value="社会实践">
+              <span>社会实践</span>
+            </label>
+            <label>
+              <input type="radio" name="projectType" value="其他">
+              <span>其他</span>
+            </label>
+          </div>
+          <div class="custom-type-field hidden" id="customTypeField">
+            <label for="customProjectType">请输入项目类型</label>
+            <input id="customProjectType" name="customProjectType" type="text" placeholder="例如：高校科研项目 / 企业创新项目 / 创业计划">
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="projectName">项目名称</label>
+          <input id="projectName" name="projectName" type="text" placeholder="例如：面向乡村文旅的智能服务平台">
+        </div>
+
+        <div class="field-group full-width">
+          <label for="projectIntro">项目简介</label>
+          <textarea id="projectIntro" name="projectIntro" rows="6" placeholder="请输入项目背景、核心方案、目标用户和已有成果。"></textarea>
+        </div>
+
+        <details class="deep-review full-width">
+          <summary>+ 补充项目信息，提高评审准确度</summary>
+          <div class="deep-grid">
+            <label>
+              项目背景
+              <textarea id="projectBackground" rows="3" placeholder="问题背景、政策背景或行业背景"></textarea>
+            </label>
+            <label>
+              目标用户
+              <textarea id="targetUsers" rows="3" placeholder="服务对象、使用场景和核心需求"></textarea>
+            </label>
+            <label>
+              解决方案
+              <textarea id="solution" rows="3" placeholder="产品、服务或研究方案"></textarea>
+            </label>
+            <label>
+              创新点
+              <textarea id="innovation" rows="3" placeholder="方法、模式、技术或应用创新"></textarea>
+            </label>
+            <label>
+              已有成果
+              <textarea id="achievement" rows="3" placeholder="调研、原型、论文、专利、实践反馈等"></textarea>
+            </label>
+            <label>
+              技术路线
+              <textarea id="technicalRoute" rows="3" placeholder="关键步骤、技术架构或实施路径"></textarea>
+            </label>
+            <label class="wide-field">
+              数据依据
+              <textarea id="evidence" rows="3" placeholder="数据来源、样本规模、访谈记录或验证材料"></textarea>
+            </label>
+          </div>
+        </details>
+
+        <div class="form-actions full-width">
+          <button class="primary-action button-action" type="submit">开始 AI 质检</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="section-card status-section hidden" id="analysisStatus" aria-live="polite" aria-labelledby="status-title">
+      <div class="section-heading">
+        <p class="eyebrow">Reviewing</p>
+        <div>
+          <h2 id="status-title">正在生成评审报告...</h2>
+          <p class="status-note" id="statusNote">AI 正在读取项目材料并组织评分依据，请稍候。</p>
+        </div>
+        <span class="status-timer" id="statusTimer">已用时 0 秒</span>
+      </div>
+      <ol class="status-list">
+        <li>分析项目定位</li>
+        <li>检查创新表达</li>
+        <li>评估落地能力</li>
+        <li>扫描材料风险</li>
+        <li>生成修改建议</li>
+      </ol>
+    </section>
+
+    <section class="report-section hidden" id="reportSection" aria-labelledby="report-title">
+      <div class="report-header">
+        <div>
+          <p class="eyebrow">Review Report</p>
+          <h2 id="report-title">AI 质检报告</h2>
+        </div>
+        <span class="report-badge" id="reportBadge">AI生成</span>
+      </div>
+
+      <div class="report-grid" id="reportContent"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2026 Cyrilla Web · Verity</p>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
