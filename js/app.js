@@ -227,7 +227,9 @@ async function extractDocxText(bytes) {
     throw new Error("DOCX 文档内容无法读取");
   }
 
-  const xmlBytes = entry.method === 0 ? entry.data : await inflateRaw(entry.data);
+  const archive = window.fflate?.unzipSync ? window.fflate.unzipSync(bytes) : null;
+  const xmlBytes = archive?.["word/document.xml"]
+    || (entry.method === 0 ? entry.data : await inflateRaw(entry.data));
   return xmlToText(new TextDecoder("utf-8", { fatal: false }).decode(xmlBytes));
 }
 
