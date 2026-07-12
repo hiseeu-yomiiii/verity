@@ -69,7 +69,8 @@ function normalizeInput(input) {
       name: String(file?.name || "未命名材料").trim(),
       type: String(file?.type || "").trim(),
       size: Number(file?.size || 0),
-      content: String(file?.content || "")
+      content: String(file?.content || ""),
+      extractedText: String(file?.extractedText || "")
     })) : [],
     materials: []
   };
@@ -153,14 +154,14 @@ function parseModelJson(content) {
 }
 
 async function extractUploadedMaterials(files = []) {
-  const supported = files.filter((file) => file.content && /\.(docx|txt)$/i.test(file.name));
+  const supported = files.filter((file) => (file.extractedText || file.content) && /\.(docx|txt)$/i.test(file.name));
   const materials = [];
 
   for (const file of supported) {
     const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-    const text = extension === ".txt"
+    const text = file.extractedText || (extension === ".txt"
       ? decodeTextFile(file.content)
-      : await extractDocxText(file.content);
+      : await extractDocxText(file.content));
 
     if (text.trim()) {
       materials.push({

@@ -206,25 +206,109 @@ async function serializeFiles() {
       throw new Error("单个材料不能超过 5 MB");
     }
 
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const extractedText = extension === ".txt"
+      ? new TextDecoder("utf-8", { fatal: false }).decode(bytes).trim()
+      : await extractDocxText(bytes);
+
     return {
       name: file.name,
       type: file.type || extension,
       size: file.size,
-      content: arrayBufferToBase64(await file.arrayBuffer())
+      extractedText: limitText(extractedText, 50000)
     };
   }));
 }
 
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 0x8000;
-  let binary = "";
+async function extractDocxText(bytes) {
+  const entry = findZipEntry(bytes, "word/document.xml");
 
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  if (!entry) {
+    throw new Error("DOCX 文档内容无法读取");
   }
 
-  return btoa(binary);
+  const xmlBytes = entry.method === 0 ? entry.data : await inflateRaw(entry.data);
+  return xmlToText(new TextDecoder("utf-8", { fatal: false }).decode(xmlBytes));
+}
+
+function findZipEntry(bytes, targetName) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let endOffset = -1;
+
+  for (let index = bytes.length - 22; index >= 0; index -= 1) {
+    if (view.getUint32(index, true) === 0x06054b50) {
+      endOffset = index;
+      break;
+    }
+  }
+
+  if (endOffset < 0) {
+    throw new Error("DOCX 文件格式无法读取");
+  }
+
+  const entryCount = view.getUint16(endOffset + 10, true);
+  const directoryOffset = view.getUint32(endOffset + 16, true);
+  let offset = directoryOffset;
+
+  for (let index = 0; index < entryCount; index += 1) {
+    if (view.getUint32(offset, true) !== 0x02014b50) {
+      break;
+    }
+
+    const method = view.getUint16(offset + 10, true);
+    const compressedSize = view.getUint32(offset + 20, true);
+    const nameLength = view.getUint16(offset + 28, true);
+    const extraLength = view.getUint16(offset + 30, true);
+    const commentLength = view.getUint16(offset + 32, true);
+    const localOffset = view.getUint32(offset + 42, true);
+    const name = new TextDecoder().decode(bytes.slice(offset + 46, offset + 46 + nameLength));
+
+    if (name === targetName) {
+      const localNameLength = view.getUint16(localOffset + 26, true);
+      const localExtraLength = view.getUint16(localOffset + 28, true);
+      const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+
+      return {
+        method,
+        data: bytes.slice(dataStart, dataStart + compressedSize)
+      };
+    }
+
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
+
+  return null;
+}
+
+async function inflateRaw(bytes) {
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("当前浏览器不支持 DOCX 解压");
+  }
+
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+function xmlToText(xml) {
+  return xml
+    .replace(/<w:tab\s*\/?>/gi, "\t")
+    .replace(/<w:br\s*\/?>/gi, "\n")
+    .replace(/<\/w:p>/gi, "\n")
+    .replace(/<\/w:tr>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s*\n+/g, "\n")
+    .trim();
+}
+
+function limitText(text, maxLength) {
+  return text.length > maxLength ? `${text.slice(0, maxLength)}\n[材料文本已截断]` : text;
 }
 
 function updateCustomTypeVisibility() {
