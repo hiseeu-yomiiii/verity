@@ -105,6 +105,50 @@ optimize：事实问题不大，但表达方式需要优化。
     "competitiveLevel": "",
     "mainConcern": ""
   },
+  "projectProfile": {
+    "basicInfo": {
+      "name": "",
+      "field": "",
+      "projectType": "",
+      "stage": ""
+    },
+    "problemAnalysis": {
+      "background": "",
+      "painPoint": "",
+      "targetUsers": ""
+    },
+    "solution": {
+      "overview": "",
+      "coreFeatures": [],
+      "innovationPoints": []
+    },
+    "technology": {
+      "technicalRoute": "",
+      "aiApplication": "",
+      "implementationStatus": ""
+    },
+    "evidence": {
+      "dataSupport": "",
+      "userValidation": "",
+      "existingResults": "",
+      "missingEvidence": []
+    },
+    "businessValue": {
+      "applicationScenario": "",
+      "promotionPath": "",
+      "sustainability": ""
+    }
+  },
+  "materialSummary": {
+    "understanding": "",
+    "keyEvidence": [],
+    "criticalMissing": []
+  },
+  "evidenceScore": {
+    "score": 0,
+    "covered": [],
+    "missing": []
+  },
   "evaluation": {
     "score": 0,
     "level": "",
@@ -228,14 +272,17 @@ optimize：事实问题不大，但表达方式需要优化。
 1. dimensions 必须正好包含五个固定维度。
 2. score 必须是数字，不要写“82分”。
 3. score 必须等于五个维度分数总和。
-4. strengths 至少 2 条。
-5. risks 至少 3 条。
-6. judgeQuestions 输出 3-5 个。
-7. actionPlan 的 S/A/B 至少各 1 条。
-8. 每条建议必须具体，不能写“加强创新”“完善材料”这种空话。
-9. 如果材料没有体现信息，必须写“材料未体现”，不要补充假数据。
-10. judgeQuestions.recommendedAnswer 必须是准备方向、回答框架或材料清单，不得编造问卷结果、模型指标、合作关系、预算来源或用户反馈。
-11. actionPlan.action 必须是下一步行动建议，不得写成项目已经完成或已经验证的事实。
-12. optimization.rewriteExample 只能重组已有信息；缺失信息必须保留为“材料未体现”或改写为计划性表达。
-13. 任何可信度建议、风险建议或材料清单都不得使用“通过XX发现”“数据显示X%”“已有X名用户”等拟事实模板；请改为“可补充相关数据及来源”。
+4. projectProfile 必须只整理材料中明确出现的项目信息；没有依据的字段写“材料未体现”，不要推断事实。
+5. materialSummary.keyEvidence 只能列出材料中已经出现的证据，criticalMissing 只能列出尚未体现的证据类型。
+6. evidenceScore.score 是对材料支撑程度的估计，不是项目质量分；必须根据 covered 和 missing 解释，不能为了好看提高分数。
+7. strengths 至少 2 条。
+8. risks 至少 3 条。
+9. judgeQuestions 输出 3-5 个。
+10. actionPlan 的 S/A/B 至少各 1 条。
+11. 每条建议必须具体，不能写“加强创新”“完善材料”这种空话。
+12. 如果材料没有体现信息，必须写“材料未体现”，不要补充假数据。
+13. judgeQuestions.recommendedAnswer 必须是准备方向、回答框架或材料清单，不得编造问卷结果、模型指标、合作关系、预算来源或用户反馈。
+14. actionPlan.action 必须是下一步行动建议，不得写成项目已经完成或已经验证的事实。
+15. optimization.rewriteExample 只能重组已有信息；缺失信息必须保留为“材料未体现”或改写为计划性表达。
+16. 任何可信度建议、风险建议或材料清单都不得使用“通过XX发现”“数据显示X%”“已有X名用户”等拟事实模板；请改为“可补充相关数据及来源”。
 `;

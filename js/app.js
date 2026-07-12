@@ -17,9 +17,11 @@ const customTypeField = document.querySelector("#customTypeField");
 const customProjectType = document.querySelector("#customProjectType");
 const projectFiles = document.querySelector("#projectFiles");
 const fileList = document.querySelector("#fileList");
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const reviewHints = [
-  "AI 正在读取项目材料并组织评分依据，请稍候。",
+  "正在读取上传材料并组织项目上下文，请稍候。",
+  "正在整理项目档案，识别背景、方案和已有成果。",
   "正在对照竞赛评审标准，检查项目定位与问题表达。",
   "正在扫描创新点、证据依据和落地风险。",
   "正在整理评委可能追问与修改行动清单。",
@@ -61,7 +63,7 @@ async function runReview() {
   statusSection.scrollIntoView({ behavior: "smooth", block: "start" });
 
   try {
-    const report = USE_DEMO ? buildReportFromDemo() : await requestAiReport();
+    const report = USE_DEMO ? await buildReportFromDemo() : await requestAiReport();
     reportBadge.textContent = USE_DEMO ? "Demo数据" : "AI生成";
     window.VerityRenderer.renderReport(report, reportContent);
     window.VerityRenderer.renderHeroPreview(report, heroPreviewContent);
@@ -136,7 +138,7 @@ async function requestAiReport() {
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify(collectProjectPayload())
+    body: JSON.stringify(await collectProjectPayload())
   });
 
   if (!response.ok) {
@@ -149,9 +151,9 @@ async function requestAiReport() {
   return report;
 }
 
-function buildReportFromDemo() {
+async function buildReportFromDemo() {
   const report = normalizeReport(cloneReport(window.demoReport));
-  const payload = collectProjectPayload();
+  const payload = await collectProjectPayload();
 
   report.meta.projectName = payload.name || report.meta.projectName;
   report.meta.projectType = payload.type || report.meta.projectType;
@@ -159,15 +161,22 @@ function buildReportFromDemo() {
   return report;
 }
 
-function collectProjectPayload() {
+async function collectProjectPayload() {
   const selectedType = document.querySelector("input[name='projectType']:checked").value;
   const customType = customProjectType.value.trim();
   const projectType = selectedType === "其他" && customType ? customType : selectedType;
+  const content = document.querySelector("#projectIntro").value.trim();
+  const files = await serializeFiles();
+
+  if (!content && files.length === 0) {
+    throw new Error("请填写项目简介或上传 DOCX/TXT 材料");
+  }
 
   return {
     type: projectType,
     name: document.querySelector("#projectName").value.trim(),
-    content: document.querySelector("#projectIntro").value.trim(),
+    content,
+    files,
     extra: {
       typeCategory: selectedType,
       customType,
@@ -180,6 +189,42 @@ function collectProjectPayload() {
       evidence: document.querySelector("#evidence").value.trim()
     }
   };
+}
+
+async function serializeFiles() {
+  const files = Array.from(projectFiles.files || []);
+  const allowedExtensions = [".docx", ".txt"];
+
+  return Promise.all(files.map(async (file) => {
+    const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+
+    if (!allowedExtensions.includes(extension)) {
+      throw new Error("当前仅支持 DOCX 和 TXT 材料");
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error("单个材料不能超过 5 MB");
+    }
+
+    return {
+      name: file.name,
+      type: file.type || extension,
+      size: file.size,
+      content: arrayBufferToBase64(await file.arrayBuffer())
+    };
+  }));
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = "";
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+
+  return btoa(binary);
 }
 
 function updateCustomTypeVisibility() {
