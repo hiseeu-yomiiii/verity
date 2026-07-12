@@ -15,6 +15,8 @@ const statusSteps = Array.from(document.querySelectorAll(".status-list li"));
 const projectTypeInputs = Array.from(document.querySelectorAll("input[name='projectType']"));
 const customTypeField = document.querySelector("#customTypeField");
 const customProjectType = document.querySelector("#customProjectType");
+const projectFiles = document.querySelector("#projectFiles");
+const fileList = document.querySelector("#fileList");
 
 const reviewHints = [
   "AI 正在读取项目材料并组织评分依据，请稍候。",
@@ -49,6 +51,7 @@ projectTypeInputs.forEach((input) => {
   input.addEventListener("change", updateCustomTypeVisibility);
 });
 
+projectFiles.addEventListener("change", updateFileList);
 updateCustomTypeVisibility();
 
 async function runReview() {
@@ -255,8 +258,68 @@ function normalizeReport(report = {}) {
       positioning: report.optimization?.positioning || "材料未体现",
       structureAdvice: Array.isArray(report.optimization?.structureAdvice) ? report.optimization.structureAdvice : [],
       rewriteExample: report.optimization?.rewriteExample || "材料未体现"
-    }
+    },
+    ...(report.projectProfile ? { projectProfile: normalizeProjectProfile(report.projectProfile) } : {}),
+    ...(report.materialSummary ? { materialSummary: normalizeMaterialSummary(report.materialSummary) } : {}),
+    ...(report.evidenceScore ? { evidenceScore: normalizeEvidenceScore(report.evidenceScore) } : {})
   };
+}
+
+function normalizeProjectProfile(profile = {}) {
+  return {
+    basicInfo: profile.basicInfo || {},
+    problemAnalysis: profile.problemAnalysis || {},
+    solution: profile.solution || {},
+    technology: profile.technology || {},
+    evidence: profile.evidence || {},
+    businessValue: profile.businessValue || {}
+  };
+}
+
+function normalizeMaterialSummary(summary = {}) {
+  return {
+    understanding: summary.understanding || "材料未体现",
+    keyEvidence: Array.isArray(summary.keyEvidence) ? summary.keyEvidence : [],
+    criticalMissing: Array.isArray(summary.criticalMissing) ? summary.criticalMissing : []
+  };
+}
+
+function normalizeEvidenceScore(score = {}) {
+  return {
+    score: Number.isFinite(Number(score.score)) ? Number(score.score) : 0,
+    covered: Array.isArray(score.covered) ? score.covered : [],
+    missing: Array.isArray(score.missing) ? score.missing : []
+  };
+}
+
+function updateFileList() {
+  const files = Array.from(projectFiles.files || []);
+
+  fileList.classList.toggle("hidden", files.length === 0);
+  fileList.innerHTML = files.map((file) => `
+    <li>
+      <span aria-hidden="true">✓</span>
+      <strong>${escapeHtml(file.name)}</strong>
+      <small>${formatFileSize(file.size)}</small>
+    </li>
+  `).join("");
+}
+
+function formatFileSize(size) {
+  if (!size) return "待解析";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[character]));
 }
 
 function normalizeDimensions(dimensions) {

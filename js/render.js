@@ -45,6 +45,9 @@ function renderReport(report, container) {
   container.innerHTML = `
     ${renderScoreSummary(report)}
     ${renderSummary(report.summary)}
+    ${renderProjectProfile(report.projectProfile)}
+    ${renderMaterialSummary(report.materialSummary)}
+    ${renderEvidenceScore(report.evidenceScore)}
     ${renderDimensions(report.dimensions)}
     ${renderStrengths(report.strengths)}
     ${renderCredibility(report.credibilityCheck)}
@@ -53,6 +56,128 @@ function renderReport(report, container) {
     ${renderActionPlan(report.actionPlan || report.actionList)}
     ${renderOptimization(report.optimization)}
   `;
+}
+
+function renderProjectProfile(profile) {
+  if (!profile || !profileHasContent(profile)) {
+    return "";
+  }
+
+  const basicInfo = profile.basicInfo || {};
+  const problem = profile.problemAnalysis || {};
+  const solution = profile.solution || {};
+  const technology = profile.technology || {};
+  const evidence = profile.evidence || {};
+
+  return `
+    <article class="report-card full profile-card">
+      <div class="card-title-row">
+        <div>
+          <p class="eyebrow">Project Profile</p>
+          <h3>项目理解摘要</h3>
+        </div>
+        <span class="report-badge">Verity 已识别</span>
+      </div>
+      <div class="profile-grid">
+        ${renderProfileField("项目名称", basicInfo.name)}
+        ${renderProfileField("项目领域", basicInfo.field)}
+        ${renderProfileField("核心问题", problem.painPoint || problem.background)}
+        ${renderProfileField("目标用户", problem.targetUsers)}
+        ${renderProfileField("解决方案", solution.overview)}
+        ${renderProfileField("技术路线", technology.technicalRoute)}
+        ${renderProfileField("已有成果", evidence.existingResults || technology.implementationStatus)}
+        ${renderProfileField("关键缺口", formatList(evidence.missingEvidence))}
+      </div>
+    </article>
+  `;
+}
+
+function renderMaterialSummary(summary) {
+  if (!summary || !summary.understanding) {
+    return "";
+  }
+
+  return `
+    <article class="report-card full material-summary-card">
+      <h3>材料理解摘要</h3>
+      <p class="impression">${fallback(summary.understanding, "材料未体现")}</p>
+      <div class="summary-columns">
+        <div>
+          <h4>已识别证据</h4>
+          ${renderTagList(summary.keyEvidence, "safe", "材料未体现")}
+        </div>
+        <div>
+          <h4>关键缺口</h4>
+          ${renderTagList(summary.criticalMissing, "warning", "材料未体现")}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderEvidenceScore(evidenceScore) {
+  if (!evidenceScore || !Number.isFinite(Number(evidenceScore.score))) {
+    return "";
+  }
+
+  const score = Math.max(0, Math.min(100, Number(evidenceScore.score)));
+
+  return `
+    <article class="report-card full evidence-score-card">
+      <div class="card-title-row">
+        <div>
+          <p class="eyebrow">Evidence Coverage</p>
+          <h3>证据覆盖度</h3>
+        </div>
+        <div class="coverage-score"><strong>${score}</strong><span>%</span></div>
+      </div>
+      <div class="coverage-track" aria-label="材料完整度 ${score}%">
+        <span style="width: ${score}%"></span>
+      </div>
+      <div class="summary-columns">
+        <div>
+          <h4>已有证据</h4>
+          ${renderTagList(evidenceScore.covered, "safe", "材料未体现")}
+        </div>
+        <div>
+          <h4>待补充</h4>
+          ${renderTagList(evidenceScore.missing, "warning", "材料未体现")}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderProfileField(label, value) {
+  if (!value) return "";
+
+  return `
+    <div class="profile-field">
+      <dt>${label}</dt>
+      <dd>${fallback(value, "材料未体现")}</dd>
+    </div>
+  `;
+}
+
+function renderTagList(items, tone, emptyText) {
+  const list = safeArray(items);
+
+  if (!list.length) {
+    return `<p class="empty-inline">${emptyText}</p>`;
+  }
+
+  return `<ul class="tag-list ${tone}">${list.map((item) => `<li>${fallback(item, emptyText)}</li>`).join("")}</ul>`;
+}
+
+function profileHasContent(profile) {
+  return Object.values(profile || {}).some((section) => {
+    if (!section || typeof section !== "object") return Boolean(section);
+    return Object.values(section).some((value) => Array.isArray(value) ? value.length > 0 : Boolean(value));
+  });
+}
+
+function formatList(value) {
+  return Array.isArray(value) ? value.join("、") : value;
 }
 
 function renderScoreSummary(report) {
@@ -160,7 +285,7 @@ function renderCredibility(credibilityCheck = {}) {
   return `
     <article class="report-card full">
       <div class="card-title-row">
-        <h3>材料可信度扫描</h3>
+        <h3>证据完整度分析</h3>
         <span class="status-pill ${statusClassMap[credibilityCheck.overall] || "pending"}">
           ${statusLabelMap[credibilityCheck.overall] || "待核实"}
         </span>
@@ -266,7 +391,7 @@ function renderActionGroup(level, items) {
         <span class="action-level">${level}</span>
         <div class="action-detail">
           <strong>${fallback(action.problem, "材料未体现")}</strong>
-          ${action.reason ? `<p>${action.reason}</p>` : ""}
+          ${action.reason ? `<p>${fallback(action.reason, "")}</p>` : ""}
           <p>${fallback(action.action, "建议明确修改动作")}</p>
         </div>
       </li>
@@ -286,7 +411,7 @@ function renderOptimization(optimization = {}) {
       </div>
       ${structureAdvice.length ? `
         <ul class="suggestion-list">
-          ${structureAdvice.map((suggestion) => `<li>${suggestion}</li>`).join("")}
+          ${structureAdvice.map((suggestion) => `<li>${fallback(suggestion, "材料未体现")}</li>`).join("")}
         </ul>
       ` : ""}
       <div class="rewrite-example">
@@ -328,7 +453,14 @@ function fallback(value, defaultValue) {
     return 0;
   }
 
-  return value || defaultValue;
+  const output = value || defaultValue;
+  return String(output).replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[character]));
 }
 
 window.VerityRenderer = {

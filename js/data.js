@@ -5,6 +5,53 @@ const demoReport = {
     reviewMode: "竞赛评审"
   },
 
+  projectProfile: {
+    basicInfo: {
+      name: "面向乡村文旅的智能服务平台",
+      field: "乡村文旅 / 数字化服务",
+      projectType: "挑战杯",
+      stage: "已有基础方案，准备补充场景验证"
+    },
+    problemAnalysis: {
+      background: "乡村文旅服务信息分散，游客和地方运营方获取信息的成本较高。",
+      painPoint: "游客难以快速获得连续、可信的文旅服务信息。",
+      targetUsers: "乡村游客、地方文旅运营方和相关管理者"
+    },
+    solution: {
+      overview: "通过智能服务平台整合文旅信息，并提供场景化的内容与路线服务。",
+      coreFeatures: ["文旅资源展示", "服务信息整合", "智能推荐"],
+      innovationPoints: ["围绕乡村场景组织服务", "尝试结合智能推荐提升信息匹配"]
+    },
+    technology: {
+      technicalRoute: "平台内容组织、用户需求识别与智能推荐模块协同实现。",
+      aiApplication: "用于文旅信息匹配和服务推荐。",
+      implementationStatus: "已有基础方案，技术原型和真实测试仍需补充。"
+    },
+    evidence: {
+      dataSupport: "材料未体现完整调研数据和测试数据。",
+      userValidation: "材料未体现用户访谈或试点反馈。",
+      existingResults: "已有项目背景、方案和价值表达。",
+      missingEvidence: ["用户调研", "试点反馈", "技术测试结果"]
+    },
+    businessValue: {
+      applicationScenario: "乡村文旅游客服务和地方运营支持。",
+      promotionPath: "可从单一乡村或地方试点开始，逐步验证复制路径。",
+      sustainability: "材料未体现持续运营和资源合作机制。"
+    }
+  },
+
+  materialSummary: {
+    understanding: "Verity 已从当前材料中识别出乡村文旅服务场景、平台化方案和智能推荐方向。",
+    keyEvidence: ["项目方案", "应用场景", "基础价值表达"],
+    criticalMissing: ["用户调研", "技术测试", "试点反馈"]
+  },
+
+  evidenceScore: {
+    score: 62,
+    covered: ["项目方案", "应用场景", "基础价值表达"],
+    missing: ["用户反馈", "测试数据", "市场或推广验证"]
+  },
+
   summary: {
     overallComment: "项目方向具备公共价值和展示潜力，能回应乡村文旅数字化服务中的真实需求。当前材料已经形成基本方案，但证据链、创新差异和落地验证仍需要进一步补强。",
     competitiveLevel: "具备竞争力",

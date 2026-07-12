@@ -46,12 +46,12 @@
       <i aria-hidden="true">↓</i>
       <div>
         <span>02</span>
-        <strong>AI评审</strong>
+        <strong>理解项目</strong>
       </div>
       <i aria-hidden="true">↓</i>
       <div>
         <span>03</span>
-        <strong>获取修改方案</strong>
+        <strong>模拟评审</strong>
       </div>
     </section>
 
@@ -60,7 +60,7 @@
         <div>
           <p class="eyebrow">STEP 01</p>
           <h2 id="input-title">提交项目材料</h2>
-          <p class="section-description">粘贴项目简介，AI将模拟评委进行检查。</p>
+        <p class="section-description">上传完整项目材料，Verity 将先理解项目，再模拟评委审核。</p>
         </div>
         <div class="input-tips" aria-label="项目简介填写建议">
           <span>建议输入：</span>
@@ -114,7 +114,23 @@
         </div>
 
         <div class="field-group full-width">
+          <div class="material-upload" aria-labelledby="upload-title">
+            <div class="upload-copy">
+              <span class="upload-icon" aria-hidden="true">↥</span>
+              <div>
+                <h3 id="upload-title">提交完整项目材料</h3>
+                <p>支持 PDF、DOCX、TXT；当前版本先记录材料，解析功能将在后续版本接入。</p>
+              </div>
+            </div>
+            <label class="upload-button" for="projectFiles">点击上传文件</label>
+            <input id="projectFiles" class="file-input" type="file" accept=".pdf,.docx,.txt" multiple>
+          </div>
+          <ul class="file-list hidden" id="fileList" aria-live="polite"></ul>
+        </div>
+
+        <div class="field-group full-width">
           <label for="projectIntro">项目简介</label>
+          <p class="field-hint">也可以直接输入项目简介：</p>
           <textarea id="projectIntro" name="projectIntro" rows="6" placeholder="请输入项目背景、核心方案、目标用户和已有成果。"></textarea>
         </div>
 
@@ -162,17 +178,17 @@
       <div class="section-heading">
         <p class="eyebrow">Reviewing</p>
         <div>
-          <h2 id="status-title">正在生成评审报告...</h2>
+          <h2 id="status-title">正在分析项目材料...</h2>
           <p class="status-note" id="statusNote">AI 正在读取项目材料并组织评分依据，请稍候。</p>
         </div>
         <span class="status-timer" id="statusTimer">已用时 0 秒</span>
       </div>
       <ol class="status-list">
-        <li>分析项目定位</li>
-        <li>检查创新表达</li>
-        <li>评估落地能力</li>
-        <li>扫描材料风险</li>
-        <li>生成修改建议</li>
+        <li>提取项目背景</li>
+        <li>识别用户需求</li>
+        <li>分析技术方案</li>
+        <li>检查已有成果</li>
+        <li>查找证据缺口</li>
       </ol>
     </section>
 
