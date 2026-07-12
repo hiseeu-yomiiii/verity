@@ -32,7 +32,7 @@ let hintTimerId = null;
 const storedTheme = localStorage.getItem("verity-theme") || "light";
 setTheme(storedTheme);
 
-window.VerityRenderer.renderHeroPreview(window.demoReport, heroPreviewContent);
+window.VerityRenderer.renderHeroPreview(normalizeReport(window.demoReport), heroPreviewContent);
 
 themeToggle.addEventListener("click", () => {
   const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
@@ -140,14 +140,14 @@ async function requestAiReport() {
     throw new Error("Worker request failed");
   }
 
-  const report = await response.json();
+  const report = normalizeReport(await response.json());
   validateReportShape(report);
 
   return report;
 }
 
 function buildReportFromDemo() {
-  const report = cloneReport(window.demoReport);
+  const report = normalizeReport(cloneReport(window.demoReport));
   const payload = collectProjectPayload();
 
   report.meta.projectName = payload.name || report.meta.projectName;
@@ -195,11 +195,14 @@ function updateCustomTypeVisibility() {
 function validateReportShape(report) {
   const requiredKeys = [
     "meta",
+    "summary",
     "evaluation",
     "dimensions",
+    "strengths",
     "credibilityCheck",
+    "risks",
     "judgeQuestions",
-    "actionList",
+    "actionPlan",
     "optimization"
   ];
 
@@ -208,6 +211,107 @@ function validateReportShape(report) {
   if (!isValid) {
     throw new Error("Invalid Verity report JSON");
   }
+}
+
+function normalizeReport(report = {}) {
+  const evaluation = report.evaluation || {};
+  const credibilityCheck = report.credibilityCheck || { overall: "warning", items: [] };
+  const risks = Array.isArray(report.risks) ? report.risks : deriveRisks(credibilityCheck.items);
+  const actionPlan = normalizeActionPlan(report.actionPlan || report.actionList);
+  const dimensions = normalizeDimensions(report.dimensions);
+  const score = Number.isFinite(Number(evaluation.score)) ? Number(evaluation.score) : 0;
+  const strengths = Array.isArray(report.strengths) ? report.strengths : [];
+  const questions = Array.isArray(report.judgeQuestions) ? report.judgeQuestions : [];
+
+  return {
+    meta: {
+      projectName: report.meta?.projectName || "未命名项目",
+      projectType: report.meta?.projectType || "未指定",
+      reviewMode: report.meta?.reviewMode || "竞赛评审"
+    },
+    summary: {
+      overallComment: report.summary?.overallComment || evaluation.reason || evaluation.status || "材料已完成基础评审，建议结合风险项继续完善。",
+      competitiveLevel: report.summary?.competitiveLevel || evaluation.level || evaluation.status || inferLevel(score),
+      mainConcern: report.summary?.mainConcern || risks[0]?.risk || risks[0]?.problem || "材料未体现"
+    },
+    evaluation: {
+      score,
+      level: evaluation.level || evaluation.status || inferLevel(score),
+      reason: evaluation.reason || evaluation.status || "材料已完成基础评审。",
+      riskCount: Number.isFinite(Number(evaluation.riskCount)) ? Number(evaluation.riskCount) : risks.length,
+      questionCount: Number.isFinite(Number(evaluation.questionCount)) ? Number(evaluation.questionCount) : questions.length,
+      suggestionCount: Number.isFinite(Number(evaluation.suggestionCount)) ? Number(evaluation.suggestionCount) : countActions(actionPlan)
+    },
+    dimensions,
+    strengths,
+    credibilityCheck: {
+      overall: credibilityCheck.overall || "warning",
+      items: Array.isArray(credibilityCheck.items) ? credibilityCheck.items : []
+    },
+    risks,
+    judgeQuestions: questions,
+    actionPlan,
+    optimization: {
+      positioning: report.optimization?.positioning || "材料未体现",
+      structureAdvice: Array.isArray(report.optimization?.structureAdvice) ? report.optimization.structureAdvice : [],
+      rewriteExample: report.optimization?.rewriteExample || "材料未体现"
+    }
+  };
+}
+
+function normalizeDimensions(dimensions) {
+  const names = ["创新性", "用户价值", "技术可信度", "商业价值", "表达完整度"];
+  const source = Array.isArray(dimensions) ? dimensions : [];
+
+  return names.map((name, index) => {
+    const item = source[index] || source.find((dimension) => dimension?.name === name) || {};
+    return {
+      name,
+      score: Number.isFinite(Number(item.score)) ? Number(item.score) : 0,
+      maxScore: Number.isFinite(Number(item.maxScore)) ? Number(item.maxScore) : 20,
+      level: item.level || "待评估",
+      analysis: item.analysis || "材料未体现",
+      evidence: item.evidence || item.suggestion || "材料未体现",
+      risk: item.risk || "待核实"
+    };
+  });
+}
+
+function normalizeActionPlan(actionPlan = {}) {
+  return ["S", "A", "B"].reduce((result, level) => {
+    result[level] = Array.isArray(actionPlan?.[level])
+      ? actionPlan[level].map((item) => typeof item === "string" ? { problem: "待明确", reason: "材料未体现", action: item } : {
+        problem: item.problem || "待明确",
+        reason: item.reason || "材料未体现",
+        action: item.action || "材料未体现"
+      })
+      : [];
+    return result;
+  }, {});
+}
+
+function deriveRisks(items) {
+  return (Array.isArray(items) ? items : [])
+    .filter((item) => ["warning", "danger"].includes(item?.status))
+    .map((item) => ({
+      level: item.status === "danger" ? "high" : "medium",
+      title: item.type || "材料风险",
+      risk: item.problem || item.content || "材料需要进一步核实",
+      evidence: item.content || "材料未体现",
+      action: item.suggestion || "补充来源或验证依据"
+    }));
+}
+
+function countActions(actionPlan) {
+  return ["S", "A", "B"].reduce((total, level) => total + (actionPlan[level]?.length || 0), 0);
+}
+
+function inferLevel(score) {
+  if (score >= 90) return "优秀竞争项目";
+  if (score >= 80) return "具备竞争力";
+  if (score >= 70) return "基础较好";
+  if (score >= 60) return "存在明显短板";
+  return "需要重新梳理";
 }
 
 function showReviewError() {

@@ -12,8 +12,14 @@ const statusClassMap = {
   optimize: "advice"
 };
 
+const riskLevelLabelMap = {
+  high: "高风险",
+  medium: "中风险",
+  low: "低风险"
+};
+
 function renderHeroPreview(report, container) {
-  const { evaluation } = report;
+  const evaluation = report.evaluation || {};
 
   container.innerHTML = `
     <div class="preview-header">
@@ -23,14 +29,14 @@ function renderHeroPreview(report, container) {
     <div class="preview-score">
       <span>项目竞争力</span>
       <div>
-        <strong>${evaluation.score}</strong>
+        <strong>${fallback(evaluation.score, 0)}</strong>
         <em>/100</em>
       </div>
     </div>
     <dl class="preview-metrics">
-      ${renderMetric("风险发现", `${evaluation.riskCount}项`)}
-      ${renderMetric("评委追问", `${evaluation.questionCount}个`)}
-      ${renderMetric("修改建议", `${evaluation.suggestionCount}条`)}
+      ${renderMetric("风险发现", `${fallback(evaluation.riskCount, 0)}项`)}
+      ${renderMetric("评委追问", `${fallback(evaluation.questionCount, 0)}个`)}
+      ${renderMetric("修改建议", `${fallback(evaluation.suggestionCount, 0)}条`)}
     </dl>
   `;
 }
@@ -38,77 +44,119 @@ function renderHeroPreview(report, container) {
 function renderReport(report, container) {
   container.innerHTML = `
     ${renderScoreSummary(report)}
+    ${renderSummary(report.summary)}
     ${renderDimensions(report.dimensions)}
+    ${renderStrengths(report.strengths)}
     ${renderCredibility(report.credibilityCheck)}
+    ${renderRisks(report.risks)}
     ${renderJudgeQuestions(report.judgeQuestions)}
-    ${renderActionList(report.actionList)}
+    ${renderActionPlan(report.actionPlan || report.actionList)}
     ${renderOptimization(report.optimization)}
   `;
 }
 
 function renderScoreSummary(report) {
-  const { evaluation } = report;
+  const evaluation = report.evaluation || {};
 
   return `
     <article class="report-card score-card">
       <div class="score-number">
-        <strong>${evaluation.score}</strong>
+        <strong>${fallback(evaluation.score, 0)}</strong>
         <span>/100</span>
       </div>
       <div>
         <p class="score-kicker">项目竞争力</p>
         <h3>综合评分</h3>
-        <p class="verdict">${evaluation.status}</p>
+        <p class="verdict">${fallback(evaluation.level || evaluation.status, "建议优化后提交")}</p>
+        <p class="score-reason">${fallback(evaluation.reason, "")}</p>
         <dl class="score-breakdown">
-          ${renderMetric("风险发现", `${evaluation.riskCount}项`)}
-          ${renderMetric("评委追问", `${evaluation.questionCount}个`)}
-          ${renderMetric("修改建议", `${evaluation.suggestionCount}条`)}
+          ${renderMetric("风险发现", `${fallback(evaluation.riskCount, 0)}项`)}
+          ${renderMetric("评委追问", `${fallback(evaluation.questionCount, 0)}个`)}
+          ${renderMetric("修改建议", `${fallback(evaluation.suggestionCount, 0)}条`)}
         </dl>
       </div>
     </article>
+  `;
+}
 
-    <article class="report-card">
-      <h3>报告摘要</h3>
-      <p class="impression">
-        当前项目综合得分为 ${evaluation.score}/100，系统建议：${evaluation.status}。
-        本轮识别出 ${evaluation.riskCount} 项风险、${evaluation.questionCount} 个评委可能追问和 ${evaluation.suggestionCount} 条修改建议。
-      </p>
+function renderSummary(summary = {}) {
+  return `
+    <article class="report-card summary-card">
+      <h3>评委综合评价</h3>
+      <p class="impression">${fallback(summary.overallComment, "材料未体现")}</p>
+      <dl class="detail-list">
+        ${renderDetail("竞争力判断", fallback(summary.competitiveLevel, "材料未体现"))}
+        ${renderDetail("主要关注点", fallback(summary.mainConcern, "材料未体现"))}
+      </dl>
     </article>
   `;
 }
 
 function renderDimensions(dimensions) {
+  const items = safeArray(dimensions);
+
   return `
     <article class="report-card full">
       <div class="card-title-row">
         <h3>五维评分卡</h3>
-        <span class="report-badge">分数 / 分析 / 风险 / 建议</span>
+        <span class="report-badge">分数 / 分析 / 依据 / 风险</span>
       </div>
       <div class="dimension-grid">
-        ${dimensions.map(renderDimension).join("")}
+        ${items.map(renderDimension).join("") || renderEmpty("材料未体现五维评分。")}
       </div>
     </article>
   `;
 }
 
-function renderDimension(item) {
+function renderDimension(item = {}) {
   return `
     <section class="dimension-card">
-      <h4>${item.name}</h4>
+      <div class="dimension-title-row">
+        <h4>${fallback(item.name, "未命名维度")}</h4>
+        ${item.level ? `<span class="report-badge">${item.level}</span>` : ""}
+      </div>
       <div class="dimension-score">
-        <strong>${item.score}</strong>
-        <span>/${item.maxScore}</span>
+        <strong>${fallback(item.score, 0)}</strong>
+        <span>/${fallback(item.maxScore, 20)}</span>
       </div>
       <dl class="detail-list">
-        ${renderDetail("分析", item.analysis)}
-        ${renderDetail("风险", item.risk)}
-        ${renderDetail("建议", item.suggestion)}
+        ${renderDetail("分析", fallback(item.analysis, "材料未体现"))}
+        ${renderDetail("依据", fallback(item.evidence || item.suggestion, "材料未体现"))}
+        ${renderDetail("风险", fallback(item.risk, "材料未体现"))}
       </dl>
     </section>
   `;
 }
 
-function renderCredibility(credibilityCheck) {
+function renderStrengths(strengths) {
+  const items = safeArray(strengths);
+
+  return `
+    <article class="report-card full">
+      <div class="card-title-row">
+        <h3>项目优势</h3>
+        <span class="report-badge">${items.length} 项</span>
+      </div>
+      <ul class="strength-list">
+        ${items.map(renderStrength).join("") || renderEmpty("材料未体现明确优势。")}
+      </ul>
+    </article>
+  `;
+}
+
+function renderStrength(item = {}) {
+  return `
+    <li class="strength-item">
+      <strong>${fallback(item.title, "材料未体现")}</strong>
+      <p>${fallback(item.description, "材料未体现")}</p>
+      <span>${fallback(item.evidence, "材料未体现")}</span>
+    </li>
+  `;
+}
+
+function renderCredibility(credibilityCheck = {}) {
+  const items = safeArray(credibilityCheck.items);
+
   return `
     <article class="report-card full">
       <div class="card-title-row">
@@ -118,13 +166,13 @@ function renderCredibility(credibilityCheck) {
         </span>
       </div>
       <ul class="scan-grid">
-        ${credibilityCheck.items.map(renderCredibilityItem).join("")}
+        ${items.map(renderCredibilityItem).join("") || renderEmpty("材料未体现可信度扫描结果。")}
       </ul>
     </article>
   `;
 }
 
-function renderCredibilityItem(item) {
+function renderCredibilityItem(item = {}) {
   const statusClass = statusClassMap[item.status] || "advice";
   const statusLabel = statusLabelMap[item.status] || "优化建议";
 
@@ -132,67 +180,118 @@ function renderCredibilityItem(item) {
     <li class="scan-item">
       <span class="status-pill ${statusClass}">${statusLabel}</span>
       <div>
-        <strong>${item.content}</strong>
-        <p>${item.problem}</p>
-        <p>${item.suggestion}</p>
+        <strong>${fallback(item.content, "材料未体现")}</strong>
+        <p>${fallback(item.problem, "材料未体现")}</p>
+        <p>${fallback(item.suggestion, "建议补充依据")}</p>
+      </div>
+    </li>
+  `;
+}
+
+function renderRisks(risks) {
+  const items = safeArray(risks);
+
+  return `
+    <article class="report-card full">
+      <div class="card-title-row">
+        <h3>核心风险</h3>
+        <span class="report-badge">${items.length} 项</span>
+      </div>
+      <ul class="risk-list">
+        ${items.map(renderRisk).join("") || renderEmpty("材料未体现核心风险。")}
+      </ul>
+    </article>
+  `;
+}
+
+function renderRisk(item = {}) {
+  const level = item.level || "medium";
+
+  return `
+    <li class="risk-item">
+      <span class="risk-level ${level}">${riskLevelLabelMap[level] || "中风险"}</span>
+      <div>
+        <strong>${fallback(item.title, "材料未体现")}</strong>
+        <p>${fallback(item.description, "材料未体现")}</p>
+        <p>${fallback(item.suggestion, "建议补充依据")}</p>
       </div>
     </li>
   `;
 }
 
 function renderJudgeQuestions(questions) {
+  const items = safeArray(questions);
+
   return `
     <article class="report-card">
       <h3>评委可能追问</h3>
       <ul class="question-list">
-        ${questions.map((item) => `
-          <li class="question-item">
-            <strong>${item.question}</strong>
-            <p>${item.reason}</p>
-            <p>${item.prepare}</p>
-          </li>
-        `).join("")}
+        ${items.map(renderJudgeQuestion).join("") || renderEmpty("材料未体现评委追问。")}
       </ul>
     </article>
   `;
 }
 
-function renderActionList(actionList) {
+function renderJudgeQuestion(item = {}) {
+  return `
+    <li class="question-item">
+      <strong>${fallback(item.question, "材料未体现")}</strong>
+      <p><b>为什么会问：</b>${fallback(item.whyAsk || item.reason, "材料未体现")}</p>
+      <p><b>建议准备：</b>${fallback(item.recommendedAnswer || item.prepare, "材料未体现")}</p>
+    </li>
+  `;
+}
+
+function renderActionPlan(actionPlan = {}) {
   return `
     <article class="report-card">
       <h3>S/A/B 修改行动清单</h3>
       <ul class="action-list">
-        ${renderActionGroup("S", actionList.S)}
-        ${renderActionGroup("A", actionList.A)}
-        ${renderActionGroup("B", actionList.B)}
+        ${renderActionGroup("S", actionPlan.S)}
+        ${renderActionGroup("A", actionPlan.A)}
+        ${renderActionGroup("B", actionPlan.B)}
       </ul>
     </article>
   `;
 }
 
 function renderActionGroup(level, items) {
-  return items.map((text) => `
-    <li class="action-item">
-      <span class="action-level">${level}</span>
-      <span>${text}</span>
-    </li>
-  `).join("");
+  return safeArray(items).map((item) => {
+    const action = typeof item === "string"
+      ? { problem: item, reason: "", action: item }
+      : item || {};
+
+    return `
+      <li class="action-item">
+        <span class="action-level">${level}</span>
+        <div class="action-detail">
+          <strong>${fallback(action.problem, "材料未体现")}</strong>
+          ${action.reason ? `<p>${action.reason}</p>` : ""}
+          <p>${fallback(action.action, "建议明确修改动作")}</p>
+        </div>
+      </li>
+    `;
+  }).join("");
 }
 
-function renderOptimization(optimization) {
+function renderOptimization(optimization = {}) {
+  const structureAdvice = safeArray(optimization.structureAdvice);
+
   return `
     <article class="report-card full">
       <h3>优化建议</h3>
       <div class="optimization-block">
         <h4>定位建议</h4>
-        <p>${optimization.positioning}</p>
+        <p>${fallback(optimization.positioning, "材料未体现")}</p>
       </div>
-      <ul class="suggestion-list">
-        ${optimization.structureAdvice.map((suggestion) => `<li>${suggestion}</li>`).join("")}
-      </ul>
+      ${structureAdvice.length ? `
+        <ul class="suggestion-list">
+          ${structureAdvice.map((suggestion) => `<li>${suggestion}</li>`).join("")}
+        </ul>
+      ` : ""}
       <div class="rewrite-example">
         <h4>示例改写</h4>
-        <p>${optimization.rewriteExample}</p>
+        <p>${fallback(optimization.rewriteExample, "材料未体现")}</p>
       </div>
     </article>
   `;
@@ -214,6 +313,22 @@ function renderDetail(label, value) {
       <dd>${value}</dd>
     </div>
   `;
+}
+
+function renderEmpty(text) {
+  return `<li class="empty-state">${text}</li>`;
+}
+
+function safeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function fallback(value, defaultValue) {
+  if (value === 0) {
+    return 0;
+  }
+
+  return value || defaultValue;
 }
 
 window.VerityRenderer = {

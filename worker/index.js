@@ -108,7 +108,7 @@ async function callDeepSeek(payload, env) {
 
 function buildUserPrompt(payload) {
   return `
-请根据以下项目材料生成 Verity JSON 评审报告。
+请根据以下项目材料生成 Verity v0.3 JSON 评审报告。
 
 项目类型：${payload.type}
 项目名称：${payload.name}
@@ -141,37 +141,123 @@ function parseModelJson(content) {
 
 function normalizeReport(report, payload) {
   const dimensions = Array.isArray(report.dimensions) ? report.dimensions : [];
-  const score = Number(report?.evaluation?.score || dimensions.reduce((sum, item) => sum + Number(item.score || 0), 0));
+  const normalizedDimensions = normalizeDimensions(dimensions);
+  const score = Number(report?.evaluation?.score || normalizedDimensions.reduce((sum, item) => sum + Number(item.score || 0), 0));
+  const evaluation = report?.evaluation || {};
+  const credibilityItems = Array.isArray(report?.credibilityCheck?.items) ? report.credibilityCheck.items : [];
+  const risks = Array.isArray(report?.risks) && report.risks.length
+    ? report.risks
+    : credibilityItems
+        .filter((item) => item.status === "danger" || item.status === "warning")
+        .map((item) => ({
+          level: item.status === "danger" ? "high" : "medium",
+          type: item.type || "evidence",
+          title: item.content || "材料可信度风险",
+          description: item.problem || "材料未体现",
+          suggestion: item.suggestion || "建议补充依据"
+        }));
 
   return {
     meta: {
       projectName: String(report?.meta?.projectName || payload.name),
-      projectType: String(report?.meta?.projectType || payload.type)
+      projectType: String(report?.meta?.projectType || payload.type),
+      reviewMode: String(report?.meta?.reviewMode || "竞赛评审")
+    },
+    summary: {
+      overallComment: String(report?.summary?.overallComment || evaluation.reason || "材料已完成基础评审，建议继续补充关键证据。"),
+      competitiveLevel: String(report?.summary?.competitiveLevel || evaluation.level || evaluation.status || inferLevel(score)),
+      mainConcern: String(report?.summary?.mainConcern || inferMainConcern(credibilityItems, risks))
     },
     evaluation: {
       score,
-      status: String(report?.evaluation?.status || "建议优化后提交"),
-      riskCount: Number(report?.evaluation?.riskCount || 0),
-      questionCount: Number(report?.evaluation?.questionCount || 0),
-      suggestionCount: Number(report?.evaluation?.suggestionCount || 0)
+      level: String(evaluation.level || evaluation.status || inferLevel(score)),
+      reason: String(evaluation.reason || evaluation.status || "建议优化后提交"),
+      riskCount: Number(evaluation.riskCount || risks.length || 0),
+      questionCount: Number(evaluation.questionCount || (Array.isArray(report?.judgeQuestions) ? report.judgeQuestions.length : 0)),
+      suggestionCount: Number(evaluation.suggestionCount || countActions(report?.actionPlan || report?.actionList))
     },
-    dimensions,
+    dimensions: normalizedDimensions,
+    strengths: Array.isArray(report?.strengths) ? report.strengths : [],
     credibilityCheck: {
       overall: report?.credibilityCheck?.overall || "warning",
-      items: Array.isArray(report?.credibilityCheck?.items) ? report.credibilityCheck.items : []
+      items: credibilityItems
     },
+    risks,
     judgeQuestions: Array.isArray(report?.judgeQuestions) ? report.judgeQuestions : [],
-    actionList: {
-      S: Array.isArray(report?.actionList?.S) ? report.actionList.S : [],
-      A: Array.isArray(report?.actionList?.A) ? report.actionList.A : [],
-      B: Array.isArray(report?.actionList?.B) ? report.actionList.B : []
-    },
+    actionPlan: normalizeActionPlan(report?.actionPlan || report?.actionList),
     optimization: {
       positioning: String(report?.optimization?.positioning || "材料未体现"),
       structureAdvice: Array.isArray(report?.optimization?.structureAdvice) ? report.optimization.structureAdvice : [],
       rewriteExample: String(report?.optimization?.rewriteExample || "材料未体现")
     }
   };
+}
+
+function normalizeDimensions(dimensions) {
+  const defaultNames = ["创新性", "用户价值", "技术可信度", "商业价值", "表达完整度"];
+
+  return defaultNames.map((name, index) => {
+    const source = dimensions[index] || dimensions.find((item) => item.name === name) || {};
+
+    return {
+      name,
+      score: Number(source.score || 0),
+      maxScore: Number(source.maxScore || 20),
+      level: String(source.level || ""),
+      analysis: String(source.analysis || "材料未体现"),
+      evidence: String(source.evidence || source.suggestion || "材料未体现"),
+      risk: String(source.risk || "材料未体现")
+    };
+  });
+}
+
+function normalizeActionPlan(actionPlan = {}) {
+  return {
+    S: normalizeActionItems(actionPlan.S),
+    A: normalizeActionItems(actionPlan.A),
+    B: normalizeActionItems(actionPlan.B)
+  };
+}
+
+function normalizeActionItems(items) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  return items.map((item) => {
+    if (typeof item === "string") {
+      return {
+        problem: item,
+        reason: "材料当前存在会影响评审判断的优化点。",
+        action: item
+      };
+    }
+
+    return {
+      problem: String(item?.problem || "材料未体现"),
+      reason: String(item?.reason || "建议补充依据"),
+      action: String(item?.action || "建议明确修改动作")
+    };
+  });
+}
+
+function countActions(actionPlan = {}) {
+  return ["S", "A", "B"].reduce((sum, level) => {
+    return sum + (Array.isArray(actionPlan[level]) ? actionPlan[level].length : 0);
+  }, 0);
+}
+
+function inferLevel(score) {
+  if (score >= 90) return "优秀竞争项目";
+  if (score >= 80) return "具备竞争力";
+  if (score >= 70) return "基础较好";
+  if (score >= 60) return "存在明显短板";
+  return "需要重新梳理";
+}
+
+function inferMainConcern(credibilityItems, risks) {
+  const firstRisk = risks[0]?.description || credibilityItems[0]?.problem;
+  return String(firstRisk || "材料未体现关键风险，建议继续核实证据。");
 }
 
 function jsonResponse(body, status = 200) {
