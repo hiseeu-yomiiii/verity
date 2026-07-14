@@ -840,6 +840,44 @@ select:focus {
   margin-bottom: 18px;
 }
 
+.report-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.copy-report-button {
+  min-height: 36px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent-color);
+  font-size: 0.86rem;
+  font-weight: 800;
+  padding: 7px 14px;
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.copy-report-button:hover:not(:disabled) {
+  border-color: var(--primary-color);
+  background: var(--soft-field-color);
+  color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.copy-report-button:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.copy-report-button:disabled {
+  cursor: default;
+  opacity: 0.72;
+  transform: none;
+}
+
 .report-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -1394,8 +1432,15 @@ select:focus {
   }
 
   .primary-action,
-  .button-action {
+  .button-action,
+  .copy-report-button {
     width: 100%;
+  }
+
+  .report-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .form-actions {
