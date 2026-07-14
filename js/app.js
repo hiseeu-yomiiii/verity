@@ -5,7 +5,6 @@ const form = document.querySelector("#projectForm");
 const statusSection = document.querySelector("#analysisStatus");
 const reportSection = document.querySelector("#reportSection");
 const reportContent = document.querySelector("#reportContent");
-const heroPreviewContent = document.querySelector("#heroPreviewContent");
 const reportBadge = document.querySelector("#reportBadge");
 const copyReportButton = document.querySelector("#copyReportButton");
 const themeToggle = document.querySelector("#themeToggle");
@@ -37,8 +36,6 @@ let latestReport = null;
 
 const storedTheme = localStorage.getItem("verity-theme") || "light";
 setTheme(storedTheme);
-
-window.VerityRenderer.renderHeroPreview(normalizeReport(window.demoReport), heroPreviewContent);
 
 themeToggle.addEventListener("click", () => {
   const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
@@ -73,7 +70,6 @@ async function runReview() {
     const report = USE_DEMO ? await buildReportFromDemo() : await requestAiReport();
     reportBadge.textContent = USE_DEMO ? "Demo数据" : "AI生成";
     window.VerityRenderer.renderReport(report, reportContent);
-    window.VerityRenderer.renderHeroPreview(report, heroPreviewContent);
     latestReport = report;
     copyReportButton.classList.remove("hidden");
     stopReviewProgress();
