@@ -95,7 +95,7 @@ async function callDeepSeek(payload, env) {
           content: buildUserPrompt(payload)
         }
       ],
-      temperature: 0.2,
+      temperature: 0,
       max_tokens: 3500,
       thinking: { type: "disabled" },
       response_format: { type: "json_object" },
@@ -289,9 +289,9 @@ function limitText(text, maxLength) {
 }
 
 function normalizeReport(report, payload) {
-  const dimensions = Array.isArray(report.dimensions) ? report.dimensions : [];
-  const normalizedDimensions = normalizeDimensions(dimensions);
-  const score = Number(report?.evaluation?.score || normalizedDimensions.reduce((sum, item) => sum + Number(item.score || 0), 0));
+  const normalizedDimensions = normalizeDimensions(Array.isArray(report.dimensions) ? report.dimensions : []);
+  const score = normalizedDimensions.reduce((sum, item) => sum + item.score, 0);
+  const level = inferLevel(score);
   const evaluation = report?.evaluation || {};
   const credibilityItems = Array.isArray(report?.credibilityCheck?.items) ? report.credibilityCheck.items : [];
   const risks = Array.isArray(report?.risks) && report.risks.length
@@ -305,6 +305,8 @@ function normalizeReport(report, payload) {
           description: item.problem || "材料未体现",
           suggestion: item.suggestion || "建议补充依据"
         }));
+  const questions = Array.isArray(report?.judgeQuestions) ? report.judgeQuestions : [];
+  const actionPlan = normalizeActionPlan(report?.actionPlan || report?.actionList);
 
   return {
     meta: {
@@ -314,16 +316,16 @@ function normalizeReport(report, payload) {
     },
     summary: {
       overallComment: String(report?.summary?.overallComment || evaluation.reason || "材料已完成基础评审，建议继续补充关键证据。"),
-      competitiveLevel: String(report?.summary?.competitiveLevel || evaluation.level || evaluation.status || inferLevel(score)),
+      competitiveLevel: level,
       mainConcern: String(report?.summary?.mainConcern || inferMainConcern(credibilityItems, risks))
     },
     evaluation: {
       score,
-      level: String(evaluation.level || evaluation.status || inferLevel(score)),
+      level,
       reason: String(evaluation.reason || evaluation.status || "建议优化后提交"),
-      riskCount: Number(evaluation.riskCount || risks.length || 0),
-      questionCount: Number(evaluation.questionCount || (Array.isArray(report?.judgeQuestions) ? report.judgeQuestions.length : 0)),
-      suggestionCount: Number(evaluation.suggestionCount || countActions(report?.actionPlan || report?.actionList))
+      riskCount: risks.length,
+      questionCount: questions.length,
+      suggestionCount: countActions(actionPlan)
     },
     dimensions: normalizedDimensions,
     strengths: Array.isArray(report?.strengths) ? report.strengths : [],
@@ -332,8 +334,8 @@ function normalizeReport(report, payload) {
       items: credibilityItems
     },
     risks,
-    judgeQuestions: Array.isArray(report?.judgeQuestions) ? report.judgeQuestions : [],
-    actionPlan: normalizeActionPlan(report?.actionPlan || report?.actionList),
+    judgeQuestions: questions,
+    actionPlan,
     optimization: {
       positioning: String(report?.optimization?.positioning || "材料未体现"),
       structureAdvice: Array.isArray(report?.optimization?.structureAdvice) ? report.optimization.structureAdvice : [],
@@ -365,29 +367,22 @@ function normalizeMaterialSummary(summary = {}) {
 }
 
 function normalizeEvidenceScore(score = {}) {
+  const covered = normalizeEvidenceCategories(score.covered);
+  const missing = normalizeEvidenceCategories(score.missing);
+  const total = covered.length + missing.length;
+  const calculatedScore = total ? Math.round((covered.length / total) * 100) : 0;
+
   return {
-    score: Number(score.score || 0),
-    covered: Array.isArray(score.covered) ? score.covered : [],
-    missing: Array.isArray(score.missing) ? score.missing : []
+    score: calculatedScore,
+    covered,
+    missing
   };
 }
 
-function normalizeDimensions(dimensions) {
-  const defaultNames = ["创新性", "用户价值", "技术可信度", "商业价值", "表达完整度"];
-
-  return defaultNames.map((name, index) => {
-    const source = dimensions[index] || dimensions.find((item) => item.name === name) || {};
-
-    return {
-      name,
-      score: Number(source.score || 0),
-      maxScore: Number(source.maxScore || 20),
-      level: String(source.level || ""),
-      analysis: String(source.analysis || "材料未体现"),
-      evidence: String(source.evidence || source.suggestion || "材料未体现"),
-      risk: String(source.risk || "材料未体现")
-    };
-  });
+function normalizeEvidenceCategories(items) {
+  return [...new Set((Array.isArray(items) ? items : [])
+    .map((item) => String(item || "").trim())
+    .filter(Boolean))];
 }
 
 function normalizeActionPlan(actionPlan = {}) {
