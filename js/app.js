@@ -7,6 +7,7 @@ const reportSection = document.querySelector("#reportSection");
 const reportContent = document.querySelector("#reportContent");
 const heroPreviewContent = document.querySelector("#heroPreviewContent");
 const reportBadge = document.querySelector("#reportBadge");
+const copyReportButton = document.querySelector("#copyReportButton");
 const themeToggle = document.querySelector("#themeToggle");
 const submitButton = document.querySelector(".button-action");
 const statusNote = document.querySelector("#statusNote");
@@ -32,6 +33,7 @@ let reviewStartedAt = 0;
 let timerId = null;
 let stepTimerId = null;
 let hintTimerId = null;
+let latestReport = null;
 
 const storedTheme = localStorage.getItem("verity-theme") || "light";
 setTheme(storedTheme);
@@ -54,10 +56,15 @@ projectTypeInputs.forEach((input) => {
 });
 
 projectFiles.addEventListener("change", updateFileList);
+copyReportButton.addEventListener("click", copyCompleteReport);
 updateCustomTypeVisibility();
 
 async function runReview() {
   startReviewProgress();
+  latestReport = null;
+  copyReportButton.classList.add("hidden");
+  copyReportButton.disabled = false;
+  copyReportButton.textContent = "复制完整报告";
   statusSection.classList.remove("hidden");
   reportSection.classList.add("hidden");
   statusSection.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -67,6 +74,8 @@ async function runReview() {
     reportBadge.textContent = USE_DEMO ? "Demo数据" : "AI生成";
     window.VerityRenderer.renderReport(report, reportContent);
     window.VerityRenderer.renderHeroPreview(report, heroPreviewContent);
+    latestReport = report;
+    copyReportButton.classList.remove("hidden");
     stopReviewProgress();
     statusSection.classList.add("hidden");
     reportSection.classList.remove("hidden");
@@ -509,6 +518,8 @@ function inferLevel(score) {
 }
 
 function showReviewError() {
+  latestReport = null;
+  copyReportButton.classList.add("hidden");
   statusSection.classList.add("hidden");
   reportContent.innerHTML = `
     <article class="report-card full error-card">
@@ -518,6 +529,71 @@ function showReviewError() {
   `;
   reportSection.classList.remove("hidden");
   reportSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function copyCompleteReport() {
+  if (!latestReport || !reportContent.textContent.trim()) {
+    return;
+  }
+
+  const originalText = "复制完整报告";
+  const reportText = buildCompleteReportText();
+
+  copyReportButton.disabled = true;
+
+  try {
+    await writeTextToClipboard(reportText);
+    copyReportButton.textContent = "已复制";
+  } catch (error) {
+    console.error(error);
+    copyReportButton.textContent = "复制失败";
+  }
+
+  window.setTimeout(() => {
+    copyReportButton.textContent = originalText;
+    copyReportButton.disabled = false;
+  }, 1600);
+}
+
+function buildCompleteReportText() {
+  const meta = latestReport?.meta || {};
+  const projectName = meta.projectName || document.querySelector("#projectName").value.trim() || "未命名项目";
+  const selectedType = document.querySelector("input[name='projectType']:checked");
+  const projectType = meta.projectType || selectedType?.value || "未指定";
+  const reportBody = reportContent.innerText.trim();
+
+  return [
+    "衡准 · Verity AI 质检报告",
+    `项目名称：${projectName}`,
+    `项目类型：${projectType}`,
+    `报告来源：${reportBadge.textContent.trim() || "AI生成"}`,
+    "",
+    reportBody,
+    "",
+    "提示：本报告由 AI 生成，仅供材料完善与评审准备参考，重要结论请结合真实材料人工复核。"
+  ].join("\n");
+}
+
+async function writeTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  const copied = document.execCommand("copy");
+  textarea.remove();
+
+  if (!copied) {
+    throw new Error("Clipboard copy failed");
+  }
 }
 
 function cloneReport(report) {
