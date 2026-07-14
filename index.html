@@ -198,7 +198,10 @@
           <p class="eyebrow">Review Report</p>
           <h2 id="report-title">AI 质检报告</h2>
         </div>
-        <span class="report-badge" id="reportBadge">AI生成</span>
+        <div class="report-actions">
+          <span class="report-badge" id="reportBadge">AI生成</span>
+          <button class="copy-report-button hidden" id="copyReportButton" type="button">复制完整报告</button>
+        </div>
       </div>
 
       <div class="report-grid" id="reportContent"></div>
@@ -212,6 +215,6 @@
   <script src="js/data.js"></script>
   <script src="js/render.js"></script>
   <script src="js/vendor/docx-zip.js?v=0.4.4"></script>
-  <script src="js/app.js?v=0.4.4"></script>
+  <script src="js/app.js?v=0.4.5"></script>
 </body>
 </html>
