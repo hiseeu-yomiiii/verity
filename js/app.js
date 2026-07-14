@@ -358,7 +358,8 @@ function normalizeReport(report = {}) {
   const risks = Array.isArray(report.risks) ? report.risks : deriveRisks(credibilityCheck.items);
   const actionPlan = normalizeActionPlan(report.actionPlan || report.actionList);
   const dimensions = normalizeDimensions(report.dimensions);
-  const score = Number.isFinite(Number(evaluation.score)) ? Number(evaluation.score) : 0;
+  const score = dimensions.reduce((sum, item) => sum + item.score, 0);
+  const level = inferLevel(score);
   const strengths = Array.isArray(report.strengths) ? report.strengths : [];
   const questions = Array.isArray(report.judgeQuestions) ? report.judgeQuestions : [];
 
@@ -370,16 +371,16 @@ function normalizeReport(report = {}) {
     },
     summary: {
       overallComment: report.summary?.overallComment || evaluation.reason || evaluation.status || "材料已完成基础评审，建议结合风险项继续完善。",
-      competitiveLevel: report.summary?.competitiveLevel || evaluation.level || evaluation.status || inferLevel(score),
-      mainConcern: report.summary?.mainConcern || risks[0]?.risk || risks[0]?.problem || "材料未体现"
+      competitiveLevel: level,
+      mainConcern: report.summary?.mainConcern || risks[0]?.risk || risks[0]?.problem || risks[0]?.description || "材料未体现"
     },
     evaluation: {
       score,
-      level: evaluation.level || evaluation.status || inferLevel(score),
+      level,
       reason: evaluation.reason || evaluation.status || "材料已完成基础评审。",
-      riskCount: Number.isFinite(Number(evaluation.riskCount)) ? Number(evaluation.riskCount) : risks.length,
-      questionCount: Number.isFinite(Number(evaluation.questionCount)) ? Number(evaluation.questionCount) : questions.length,
-      suggestionCount: Number.isFinite(Number(evaluation.suggestionCount)) ? Number(evaluation.suggestionCount) : countActions(actionPlan)
+      riskCount: risks.length,
+      questionCount: questions.length,
+      suggestionCount: countActions(actionPlan)
     },
     dimensions,
     strengths,
@@ -421,11 +422,21 @@ function normalizeMaterialSummary(summary = {}) {
 }
 
 function normalizeEvidenceScore(score = {}) {
+  const covered = normalizeEvidenceCategories(score.covered);
+  const missing = normalizeEvidenceCategories(score.missing);
+  const total = covered.length + missing.length;
+
   return {
-    score: Number.isFinite(Number(score.score)) ? Number(score.score) : 0,
-    covered: Array.isArray(score.covered) ? score.covered : [],
-    missing: Array.isArray(score.missing) ? score.missing : []
+    score: total ? Math.round((covered.length / total) * 100) : 0,
+    covered,
+    missing
   };
+}
+
+function normalizeEvidenceCategories(items) {
+  return [...new Set((Array.isArray(items) ? items : [])
+    .map((item) => String(item || "").trim())
+    .filter(Boolean))];
 }
 
 function updateFileList() {
@@ -463,17 +474,32 @@ function normalizeDimensions(dimensions) {
   const source = Array.isArray(dimensions) ? dimensions : [];
 
   return names.map((name, index) => {
-    const item = source[index] || source.find((dimension) => dimension?.name === name) || {};
+    const item = source.find((dimension) => dimension?.name === name) || source[index] || {};
+    const score = clampDimensionScore(item.score);
+
     return {
       name,
-      score: Number.isFinite(Number(item.score)) ? Number(item.score) : 0,
-      maxScore: Number.isFinite(Number(item.maxScore)) ? Number(item.maxScore) : 20,
-      level: item.level || "待评估",
+      score,
+      maxScore: 20,
+      level: inferDimensionLevel(score),
       analysis: item.analysis || "材料未体现",
       evidence: item.evidence || item.suggestion || "材料未体现",
       risk: item.risk || "待核实"
     };
   });
+}
+
+function clampDimensionScore(value) {
+  const score = Number(value);
+  return Number.isFinite(score) ? Math.max(0, Math.min(20, Math.round(score))) : 0;
+}
+
+function inferDimensionLevel(score) {
+  if (score >= 17) return "高";
+  if (score >= 14) return "较高";
+  if (score >= 10) return "中等";
+  if (score >= 6) return "较低";
+  return "低";
 }
 
 function normalizeActionPlan(actionPlan = {}) {
